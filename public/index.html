@@ -1,0 +1,820 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Comprometido Terminal — Jalisco 2026</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Inter:wght@400;500;600;700&display=swap');
+        
+        :root {
+            --bg-primary: #0a0e17;
+            --bg-panel: #111827;
+            --bg-card: #1a2332;
+            --bg-hover: #1f2d3d;
+            --border: #2a3a4a;
+            --border-light: #374151;
+            --text-primary: #e5e7eb;
+            --text-secondary: #9ca3af;
+            --text-muted: #6b7280;
+            --green: #10b981;
+            --green-bright: #34d399;
+            --red: #ef4444;
+            --red-bright: #f87171;
+            --amber: #f59e0b;
+            --cyan: #06b6d4;
+            --blue: #3b82f6;
+            --purple: #8b5cf6;
+            --font-mono: 'JetBrains Mono', 'Consolas', monospace;
+            --font-sans: 'Inter', 'Segoe UI', sans-serif;
+        }
+        
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: var(--font-sans); background: var(--bg-primary); color: var(--text-primary); min-height: 100vh; }
+        
+        .top-bar {
+            background: linear-gradient(90deg, #000 0%, #0a1628 100%);
+            border-bottom: 1px solid var(--border);
+            padding: 8px 20px;
+            display: flex; align-items: center; justify-content: space-between;
+            font-family: var(--font-mono); font-size: 12px;
+        }
+        .ticker { display: flex; gap: 20px; color: var(--text-secondary); }
+        .ticker span { color: var(--green-bright); }
+        .ticker .label { color: var(--text-muted); }
+        .logo { font-weight: 700; color: var(--cyan); letter-spacing: 1px; }
+        .logo::before { content: '◆ '; color: var(--green); }
+        
+        .tabs { display: flex; background: var(--bg-panel); border-bottom: 1px solid var(--border); }
+        .tab-btn {
+            flex: 1; padding: 14px; background: none; border: none; color: var(--text-muted);
+            font-size: 13px; font-weight: 600; cursor: pointer; text-transform: uppercase;
+            letter-spacing: 1px; border-bottom: 2px solid transparent; transition: all 0.2s;
+        }
+        .tab-btn:hover { color: var(--text-primary); background: var(--bg-hover); }
+        .tab-btn.active { color: var(--cyan); border-bottom-color: var(--cyan); background: var(--bg-card); }
+        
+        .container { max-width: 1600px; margin: 0 auto; padding: 20px; }
+        .vista { display: none; }
+        .vista.activa { display: block; }
+        
+        .panel {
+            background: var(--bg-panel); border: 1px solid var(--border);
+            border-radius: 4px; padding: 20px; margin-bottom: 16px;
+        }
+        .panel-header {
+            display: flex; align-items: center; justify-content: space-between;
+            margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid var(--border);
+        }
+        .panel-title {
+            font-family: var(--font-mono); font-size: 13px; font-weight: 600;
+            color: var(--cyan); text-transform: uppercase; letter-spacing: 1px;
+        }
+        .panel-title::before { content: '▸ '; color: var(--green); }
+        
+        .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; margin-bottom: 16px; }
+        .kpi {
+            background: var(--bg-card); border: 1px solid var(--border);
+            border-left: 3px solid var(--cyan); padding: 14px 16px; position: relative; overflow: hidden;
+        }
+        .kpi::before {
+            content: ''; position: absolute; top: 0; right: 0; width: 60px; height: 60px;
+            background: radial-gradient(circle, rgba(6,182,212,0.1) 0%, transparent 70%);
+        }
+        .kpi-label {
+            font-family: var(--font-mono); font-size: 10px; color: var(--text-muted);
+            text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px;
+        }
+        .kpi-value { font-family: var(--font-mono); font-size: 22px; font-weight: 700; color: var(--text-primary); }
+        .kpi.green { border-left-color: var(--green); }
+        .kpi.green .kpi-value { color: var(--green-bright); }
+        .kpi.red { border-left-color: var(--red); }
+        .kpi.red .kpi-value { color: var(--red-bright); }
+        .kpi.amber { border-left-color: var(--amber); }
+        .kpi.amber .kpi-value { color: var(--amber); }
+        .kpi.blue { border-left-color: var(--blue); }
+        .kpi.blue .kpi-value { color: #60a5fa; }
+        
+        .filtros { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; }
+        .filtro label {
+            display: block; font-family: var(--font-mono); font-size: 10px;
+            color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px;
+        }
+        .filtro select, .filtro input {
+            width: 100%; padding: 9px 12px; background: var(--bg-card);
+            border: 1px solid var(--border); color: var(--text-primary);
+            font-family: var(--font-mono); font-size: 13px; border-radius: 3px;
+        }
+        .filtro select:focus, .filtro input:focus { outline: none; border-color: var(--cyan); }
+        .filtro select option { background: var(--bg-panel); }
+        
+        .btn {
+            background: var(--bg-card); color: var(--cyan); border: 1px solid var(--cyan);
+            padding: 10px 20px; font-family: var(--font-mono); font-size: 12px;
+            font-weight: 600; text-transform: uppercase; letter-spacing: 1px;
+            cursor: pointer; margin-top: 16px; margin-right: 8px; transition: all 0.2s;
+        }
+        .btn:hover:not(:disabled) { background: var(--cyan); color: var(--bg-primary); }
+        .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+        .btn.primary { background: var(--cyan); color: var(--bg-primary); }
+        .btn.primary:hover:not(:disabled) { background: #0891b2; }
+        .btn.success { border-color: var(--green); color: var(--green); }
+        .btn.success:hover:not(:disabled) { background: var(--green); color: var(--bg-primary); }
+        .btn.ghost { border-color: var(--border); color: var(--text-secondary); }
+        .btn.ghost:hover:not(:disabled) { border-color: var(--cyan); color: var(--cyan); background: var(--bg-card); }
+        
+        .table-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: 3px; background: var(--bg-card); }
+        table { width: 100%; border-collapse: collapse; font-family: var(--font-mono); font-size: 12px; }
+        th {
+            background: #0d1420; color: var(--text-muted); padding: 10px 12px;
+            text-align: left; font-weight: 600; text-transform: uppercase;
+            font-size: 10px; letter-spacing: 0.5px; border-bottom: 1px solid var(--border);
+            position: sticky; top: 0; z-index: 10;
+        }
+        th.num { text-align: right; }
+        td { padding: 9px 12px; border-bottom: 1px solid var(--border); color: var(--text-primary); }
+        td.num { text-align: right; font-variant-numeric: tabular-nums; }
+        tr:hover td { background: var(--bg-hover); }
+        tr.clickable { cursor: pointer; }
+        tr.clickable:hover td { background: rgba(6,182,212,0.08); }
+        
+        .pos { color: var(--green-bright); font-weight: 600; }
+        .neg { color: var(--red-bright); font-weight: 600; }
+        .neu { color: var(--text-muted); }
+        .up-arrow::before { content: '▲ '; }
+        .down-arrow::before { content: '▼ '; }
+        
+        .badge {
+            display: inline-block; padding: 2px 8px; border-radius: 3px;
+            font-size: 10px; font-weight: 600; font-family: var(--font-mono);
+            text-transform: uppercase; letter-spacing: 0.5px;
+        }
+        .badge-nuevo { background: rgba(16,185,129,0.15); color: var(--green-bright); border: 1px solid var(--green); }
+        .badge-elim { background: rgba(239,68,68,0.15); color: var(--red-bright); border: 1px solid var(--red); }
+        .badge-est-E { color: var(--green); }
+        .badge-est-O { color: var(--amber); }
+        .badge-est-P { color: var(--cyan); }
+        
+        .tabla-scroll { max-height: 550px; overflow-y: auto; }
+        
+        .cargando { display: none; text-align: center; padding: 40px; color: var(--text-muted); font-family: var(--font-mono); }
+        .cargando.activo { display: block; }
+        .spinner {
+            width: 36px; height: 36px; border: 3px solid var(--border);
+            border-top-color: var(--cyan); border-radius: 50%;
+            animation: spin 0.8s linear infinite; margin: 0 auto 12px;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        
+        .modal { display: none; position: fixed; z-index: 1000; inset: 0; background: rgba(0,0,0,0.75); backdrop-filter: blur(4px); }
+        .modal-contenido {
+            background: var(--bg-panel); border: 1px solid var(--border);
+            margin: 3% auto; padding: 0; border-radius: 4px;
+            width: 95%; max-width: 1500px; max-height: 90vh; overflow: auto;
+        }
+        .modal-header {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 16px 20px; border-bottom: 1px solid var(--border); background: var(--bg-card);
+        }
+        .modal-header h2 {
+            font-family: var(--font-mono); font-size: 14px;
+            color: var(--cyan); text-transform: uppercase; letter-spacing: 1px;
+        }
+        .cerrar { font-size: 24px; cursor: pointer; color: var(--text-muted); background: none; border: none; }
+        .cerrar:hover { color: var(--red); }
+        .modal-body { padding: 20px; }
+        
+        .nota { font-family: var(--font-mono); font-size: 11px; color: var(--text-muted); margin-top: 10px; }
+        .nota::before { content: '// '; color: var(--amber); }
+        
+        .bases-list { display: flex; gap: 8px; flex-wrap: wrap; }
+        .base-btn {
+            padding: 8px 14px; background: var(--bg-card); border: 1px solid var(--border);
+            color: var(--text-secondary); font-family: var(--font-mono); font-size: 12px;
+            cursor: pointer; border-radius: 3px;
+        }
+        .base-btn.active { background: var(--cyan); color: var(--bg-primary); border-color: var(--cyan); font-weight: 600; }
+        
+        .resumen-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; margin-bottom: 16px; }
+        .resumen-item { background: var(--bg-card); border: 1px solid var(--border); padding: 10px; text-align: center; }
+        .resumen-item .lbl { font-family: var(--font-mono); font-size: 10px; color: var(--text-muted); text-transform: uppercase; }
+        .resumen-item .val { font-family: var(--font-mono); font-size: 16px; font-weight: 700; color: var(--text-primary); margin-top: 4px; }
+        
+        .breadcrumbs {
+            display: flex; align-items: center; gap: 8px;
+            font-family: var(--font-mono); font-size: 12px;
+            margin-bottom: 16px; padding: 12px 16px;
+            background: var(--bg-card); border: 1px solid var(--border); border-radius: 3px;
+        }
+        .breadcrumb-item { color: var(--text-muted); cursor: pointer; transition: color 0.2s; }
+        .breadcrumb-item:hover { color: var(--cyan); }
+        .breadcrumb-item.active { color: var(--cyan); font-weight: 600; cursor: default; }
+        .breadcrumb-sep { color: var(--text-muted); }
+        .breadcrumb-sep::before { content: '▸'; }
+        
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: var(--bg-primary); }
+        ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--border-light); }
+    </style>
+</head>
+<body>
+    <div class="top-bar">
+        <div class="logo">COMPROMETIDO TERMINAL</div>
+        <div class="ticker">
+            <div><span class="label">SYS:</span> <span id="tickerStatus">ONLINE</span></div>
+            <div><span class="label">DB:</span> <span>comparacion.db</span></div>
+            <div><span class="label">TIME:</span> <span id="tickerTime">--:--:--</span></div>
+        </div>
+    </div>
+    
+    <div class="tabs">
+        <button class="tab-btn active" onclick="cambiarVista('consulta', this)">▸ Consulta</button>
+        <button class="tab-btn" onclick="cambiarVista('comparativa', this)">▸ Comparativa</button>
+    </div>
+
+    <div class="container">
+        <!-- ============ VISTA 1: CONSULTA ============ -->
+        <div id="vistaConsulta" class="vista activa">
+            <div class="panel">
+                <div class="panel-header"><div class="panel-title">Base Activa</div></div>
+                <div id="basesList" class="bases-list"></div>
+            </div>
+            
+            <div class="kpi-grid" id="totalesPanel" style="display:none;">
+                <div class="kpi blue"><div class="kpi-label">Registros</div><div class="kpi-value" id="totalRegistros">0</div></div>
+                <div class="kpi"><div class="kpi-label">Importe Original</div><div class="kpi-value" id="totalOriginal">$0</div></div>
+                <div class="kpi green"><div class="kpi-label">Importe Pagado</div><div class="kpi-value" id="totalPagado">$0</div></div>
+                <div class="kpi amber"><div class="kpi-label">Saldo a Pagar</div><div class="kpi-value" id="totalSaldo">$0</div></div>
+            </div>
+            
+            <div class="panel" id="filtrosPanel" style="display:none;">
+                <div class="panel-header"><div class="panel-title">Filtros</div></div>
+                <div class="filtros">
+                    <div class="filtro"><label>Dependencia + UR</label><select id="filtroUPUR"><option value="">Todas</option></select></div>
+                    <div class="filtro"><label>Justificación</label><select id="filtroJustificacion"><option value="">Todas</option></select></div>
+                    <div class="filtro"><label>Partida</label><select id="filtroPartida"><option value="">Todas</option></select></div>
+                    <div class="filtro">
+                        <label>Estatus</label>
+                        <select id="filtroEstatus">
+                            <option value="">Todos</option>
+                            <option value="E">Pagado (E)</option>
+                            <option value="O">Ordenado (O)</option>
+                            <option value="P">Parcial (P)</option>
+                        </select>
+                    </div>
+                    <div class="filtro" style="grid-column: span 2;">
+                        <label>Búsqueda libre</label>
+                        <input type="text" id="filtroBusqueda" placeholder="No. Justificación, Fiscal, Concepto o Clave Presupuestal completa...">
+                    </div>
+                </div>
+                <button class="btn primary" onclick="cargarDatos()">▶ Ejecutar</button>
+            </div>
+            
+            <div class="panel" id="tablaPanel" style="display:none;">
+                <div class="panel-header">
+                    <div class="panel-title">Resultados</div>
+                    <div style="font-family:var(--font-mono);font-size:11px;color:var(--text-muted);" id="contadorRegistros"></div>
+                </div>
+                <div class="table-wrap tabla-scroll">
+                    <table>
+                        <thead><tr>
+                            <th>Justificación</th><th>No. Justif.</th><th>Nombre Fiscal</th>
+                            <th style="font-size:9px;">Clave Presupuestal</th>
+                            <th>UP</th><th>UR</th><th>Partida</th><th>Concepto Partida</th><th>Estatus</th>
+                            <th class="num">Importe Original</th><th class="num">Importe Pagado</th>
+                            <th class="num">Saldo</th><th>Fecha Emis</th>
+                        </tr></thead>
+                        <tbody id="tablaBody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- ============ VISTA 2: COMPARATIVA CON 3 NIVELES ============ -->
+        <div id="vistaComparativa" class="vista">
+            <div class="panel" id="panelSelector">
+                <div class="panel-header"><div class="panel-title">Comparativa de Bases</div></div>
+                <div class="filtros">
+                    <div class="filtro"><label>Base A (referencia)</label><select id="baseA"></select></div>
+                    <div class="filtro"><label>Base B (comparar contra)</label><select id="baseB"><option value="">— Seleccionar —</option></select></div>
+                </div>
+                <p class="nota">Selecciona dos bases y ejecuta la comparativa. Navegación jerárquica: Justificación → UP+UR → Registros.</p>
+                <button class="btn primary" id="btnComparar" onclick="ejecutarComparativa()">▶ Ejecutar Comparativa</button>
+            </div>
+
+            <div class="breadcrumbs" id="breadcrumbs" style="display:none;">
+                <span class="breadcrumb-item" id="bcNivel1" onclick="irANivel(1)">Justificaciones</span>
+                <span class="breadcrumb-sep"></span>
+                <span class="breadcrumb-item" id="bcNivel2" style="display:none;" onclick="irANivel(2)"></span>
+                <span class="breadcrumb-sep" id="bcSep2" style="display:none;"></span>
+                <span class="breadcrumb-item active" id="bcNivel3" style="display:none;"></span>
+            </div>
+
+            <div class="kpi-grid" id="resumenPanel" style="display:none;">
+                <div class="kpi blue"><div class="kpi-label" id="lblGrupos">Grupos</div><div class="kpi-value" id="cntGrupos">0</div></div>
+                <div class="kpi amber"><div class="kpi-label">Con Cambios</div><div class="kpi-value" id="cntCambios">0</div></div>
+                <div class="kpi red"><div class="kpi-label">Solo en A</div><div class="kpi-value" id="cntSoloA">0</div></div>
+                <div class="kpi green"><div class="kpi-label">Solo en B</div><div class="kpi-value" id="cntSoloB">0</div></div>
+            </div>
+
+            <div class="panel" id="totalesCompPanel" style="display:none;">
+                <div class="panel-header"><div class="panel-title">Totales Comparativos</div></div>
+                <div class="resumen-grid" id="resumenTotales"></div>
+            </div>
+
+            <div class="cargando" id="cargandoComp">
+                <div class="spinner"></div>
+                <div>Procesando...</div>
+            </div>
+
+            <div class="panel" id="detallePanel" style="display:none;">
+                <div class="panel-header">
+                    <div class="panel-title" id="tituloTabla">Desglose</div>
+                    <div>
+                        <button class="btn success" id="btnExport" onclick="exportarExcel()">⬇ Exportar</button>
+                    </div>
+                </div>
+                <div class="table-wrap tabla-scroll">
+                    <table>
+                        <thead id="theadTabla"></thead>
+                        <tbody id="tbTabla"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="modalDetalle" class="modal">
+        <div class="modal-contenido">
+            <div class="modal-header">
+                <h2 id="modalTitulo">Detalle</h2>
+                <button class="cerrar" onclick="cerrarModal()">✕</button>
+            </div>
+            <div class="modal-body">
+                <div class="resumen-grid" id="modalResumen"></div>
+                <div class="table-wrap tabla-scroll" style="max-height:500px;">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Origen</th><th>Clave Presupuestal</th><th>No. Justif.</th><th>Nombre Fiscal</th>
+                                <th>Concepto</th><th>Partida</th><th>Concepto Partida</th>
+                                <th>Estatus</th><th class="num">Importe Original</th>
+                                <th class="num">Importe Pagado</th><th class="num">Saldo</th><th>Fecha Emis</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tbModal"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const fmt = new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN', maximumFractionDigits: 2 });
+        const fmtInt = new Intl.NumberFormat('es-MX');
+        let baseActual = null;
+        let fechasComp = { a: '', b: '' };
+        let nivelActual = 0;
+        let contextoNivel = { justificacion: null, up: null, ur: null };
+
+        setInterval(() => {
+            document.getElementById('tickerTime').textContent = new Date().toLocaleTimeString('es-MX');
+        }, 1000);
+
+        function cambiarVista(v, btn) {
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            document.getElementById('vistaConsulta').classList.toggle('activa', v === 'consulta');
+            document.getElementById('vistaComparativa').classList.toggle('activa', v === 'comparativa');
+        }
+
+        function fmtDif(v) {
+            if (v === 0 || v === null || v === undefined) return '<span class="neu">—</span>';
+            const cls = v > 0 ? 'pos up-arrow' : 'neg down-arrow';
+            const signo = v > 0 ? '+' : '';
+            return `<span class="${cls}">${signo}${fmt.format(v)}</span>`;
+        }
+
+        function fmtDifPct(a, b) {
+            if (!a || a === 0) return '';
+            const pct = ((b - a) / Math.abs(a)) * 100;
+            const cls = pct > 0 ? 'pos' : (pct < 0 ? 'neg' : 'neu');
+            const signo = pct > 0 ? '+' : '';
+            return `<span class="${cls}" style="font-size:10px;">${signo}${pct.toFixed(1)}%</span>`;
+        }
+
+        // ===== VISTA 1: CONSULTA =====
+        async function cargarBases() {
+            const res = await fetch('/api/bases');
+            const bases = await res.json();
+            const cont = document.getElementById('basesList');
+            cont.innerHTML = '';
+            if (bases.length === 0) { cont.innerHTML = '<p style="color:var(--text-muted);font-family:var(--font-mono);font-size:12px;">No hay bases. Ejecuta: node transformar.js</p>'; return; }
+
+            bases.forEach(b => {
+                const btn = document.createElement('button');
+                btn.className = 'base-btn';
+                btn.textContent = b;
+                btn.onclick = () => seleccionarBase(b, btn);
+                cont.appendChild(btn);
+            });
+
+            const selA = document.getElementById('baseA');
+            const selB = document.getElementById('baseB');
+            selA.innerHTML = ''; selB.innerHTML = '<option value="">— Seleccionar —</option>';
+            bases.forEach(b => {
+                selA.innerHTML += `<option value="${b}">${b}</option>`;
+                selB.innerHTML += `<option value="${b}">${b}</option>`;
+            });
+
+            seleccionarBase(bases[0], cont.children[0]);
+        }
+
+        async function seleccionarBase(fecha, btn) {
+            document.querySelectorAll('#basesList .base-btn').forEach(b => b.classList.remove('active'));
+            if (btn) btn.classList.add('active');
+            baseActual = fecha;
+            document.getElementById('totalesPanel').style.display = 'grid';
+            document.getElementById('filtrosPanel').style.display = 'block';
+
+            const resU = await fetch(`/api/upur/${fecha}`);
+            const upur = await resU.json();
+            const selU = document.getElementById('filtroUPUR');
+            selU.innerHTML = '<option value="">Todas</option>';
+            upur.forEach(i => {
+                const nombre = i.concepto_ur || i.dependencia || 'Sin nombre';
+                selU.innerHTML += `<option value="${i.up}-${i.ur}">${i.up}-${i.ur} — ${nombre}</option>`;
+            });
+
+            const resJ = await fetch(`/api/justificaciones/${fecha}`);
+            const justs = await resJ.json();
+            const selJ = document.getElementById('filtroJustificacion');
+            selJ.innerHTML = '<option value="">Todas</option>';
+            justs.forEach(j => { selJ.innerHTML += `<option value="${j.justificacion}">${j.justificacion}</option>`; });
+
+            const resP = await fetch(`/api/partidas/${fecha}`);
+            const parts = await resP.json();
+            const selP = document.getElementById('filtroPartida');
+            selP.innerHTML = '<option value="">Todas</option>';
+            parts.forEach(p => { selP.innerHTML += `<option value="${p.partida}">${p.partida} — ${p.concepto_partida}</option>`; });
+
+            cargarDatos();
+        }
+
+        async function cargarDatos() {
+            if (!baseActual) return;
+            const params = new URLSearchParams();
+            const upur = document.getElementById('filtroUPUR').value;
+            const justificacion = document.getElementById('filtroJustificacion').value;
+            const partida = document.getElementById('filtroPartida').value;
+            const estatus = document.getElementById('filtroEstatus').value;
+            const busqueda = document.getElementById('filtroBusqueda').value;
+            if (upur) params.append('upur', upur);
+            if (justificacion) params.append('justificacion', justificacion);
+            if (partida) params.append('partida', partida);
+            if (estatus) params.append('estatus', estatus);
+            if (busqueda) params.append('busqueda', busqueda);
+
+            const res = await fetch(`/api/base/${baseActual}?${params}`);
+            const data = await res.json();
+
+            document.getElementById('totalRegistros').textContent = fmtInt.format(data.totales.total_registros);
+            document.getElementById('totalOriginal').textContent = fmt.format(data.totales.total_original || 0);
+            document.getElementById('totalPagado').textContent = fmt.format(data.totales.total_pagado || 0);
+            document.getElementById('totalSaldo').textContent = fmt.format(data.totales.total_saldo || 0);
+
+            document.getElementById('tablaPanel').style.display = 'block';
+            document.getElementById('contadorRegistros').textContent = `${fmtInt.format(data.filas.length)} / ${fmtInt.format(data.totales.total_registros)} registros`;
+            const tb = document.getElementById('tablaBody');
+            tb.innerHTML = '';
+            data.filas.forEach(f => {
+                const estCls = f.estatus === 'E' ? 'badge-est-E' : (f.estatus === 'O' ? 'badge-est-O' : (f.estatus === 'P' ? 'badge-est-P' : ''));
+                const cveCorta = (f.cve_presupuestal || '').length > 18 ? (f.cve_presupuestal || '').substring(0, 18) + '...' : (f.cve_presupuestal || '');
+                tb.innerHTML += `<tr>
+                    <td>${f.justificacion||''}</td>
+                    <td>${f.num_justificacion||''}</td>
+                    <td>${f.nombre_fiscal||''}</td>
+                    <td style="font-family:var(--font-mono);font-size:9px;color:var(--text-secondary);" title="${f.cve_presupuestal || ''}">${cveCorta}</td>
+                    <td>${f.up||''}</td><td>${f.ur||''}</td><td>${f.partida||''}</td><td>${f.concepto_partida||''}</td>
+                    <td><span class="${estCls}">${f.estatus||''}</span></td>
+                    <td class="num">${fmt.format(f.importe_original||0)}</td>
+                    <td class="num">${fmt.format(f.importe_pagado||0)}</td>
+                    <td class="num">${fmt.format(f.saldo_a_pagar||0)}</td>
+                    <td>${f.fecha_emision||''}</td>
+                </tr>`;
+            });
+        }
+
+        // ===== VISTA 2: COMPARATIVA CON 3 NIVELES =====
+        async function ejecutarComparativa() {
+            const f1 = document.getElementById('baseA').value;
+            const f2 = document.getElementById('baseB').value;
+            if (!f2) { alert('Selecciona una Base B para comparar'); return; }
+            if (f1 === f2) { alert('Debes elegir dos bases distintas'); return; }
+
+            fechasComp = { a: f1, b: f2 };
+            contextoNivel = { justificacion: null, up: null, ur: null };
+            
+            document.getElementById('panelSelector').style.display = 'none';
+            document.getElementById('breadcrumbs').style.display = 'flex';
+            
+            await cargarNivel1();
+        }
+
+        async function cargarNivel1() {
+            nivelActual = 1;
+            contextoNivel = { justificacion: null, up: null, ur: null };
+            actualizarBreadcrumbs();
+            mostrarLoading(true);
+            ocultarResultados();
+
+            try {
+                const res = await fetch(`/api/comparar/nivel1/${fechasComp.a}/${fechasComp.b}`);
+                const data = await res.json();
+                if (!data.totales || !data.filas) throw new Error('Respuesta inesperada');
+
+                renderKPIs(data.totales, 'Justificaciones');
+                renderTotales(data.totales);
+                document.getElementById('tituloTabla').textContent = `Nivel 1: Desglose por Justificación (${data.filas.length} grupos)`;
+                renderTablaNivel1(data.filas);
+                mostrarResultados();
+            } catch (err) { alert('Error: ' + err.message); }
+            finally { mostrarLoading(false); }
+        }
+
+        async function cargarNivel2(justificacion) {
+            nivelActual = 2;
+            contextoNivel.justificacion = justificacion;
+            contextoNivel.up = null;
+            contextoNivel.ur = null;
+            actualizarBreadcrumbs();
+            mostrarLoading(true);
+            ocultarResultados();
+
+            try {
+                const res = await fetch(`/api/comparar/nivel2/${fechasComp.a}/${fechasComp.b}?justificacion=${encodeURIComponent(justificacion)}`);
+                const data = await res.json();
+                if (!data.totales || !data.filas) throw new Error('Respuesta inesperada');
+
+                renderKPIs(data.totales, 'Dependencias (UP+UR)');
+                renderTotales(data.totales);
+                document.getElementById('tituloTabla').textContent = `Nivel 2: ${justificacion} → Desglose por UP+UR (${data.filas.length} grupos)`;
+                renderTablaNivel2(data.filas);
+                mostrarResultados();
+            } catch (err) { alert('Error: ' + err.message); }
+            finally { mostrarLoading(false); }
+        }
+
+        async function cargarNivel3(justificacion, up, ur) {
+            nivelActual = 3;
+            contextoNivel.justificacion = justificacion;
+            contextoNivel.up = up;
+            contextoNivel.ur = ur;
+            actualizarBreadcrumbs();
+            mostrarLoading(true);
+            ocultarResultados();
+
+            try {
+                const res = await fetch(`/api/comparar/nivel3/${fechasComp.a}/${fechasComp.b}?justificacion=${encodeURIComponent(justificacion)}&up=${encodeURIComponent(up)}&ur=${encodeURIComponent(ur)}`);
+                const data = await res.json();
+
+                const totA = data.filasA.reduce((s, f) => s + (f.importe_original || 0), 0);
+                const totB = data.filasB.reduce((s, f) => s + (f.importe_original || 0), 0);
+                const totales = {
+                    total_grupos: data.filasA.length + data.filasB.length,
+                    con_cambios: 0,
+                    solo_a: data.filasA.length,
+                    solo_b: data.filasB.length,
+                    total_orig_a: totA, total_orig_b: totB,
+                    total_pag_a: data.filasA.reduce((s, f) => s + (f.importe_pagado || 0), 0),
+                    total_pag_b: data.filasB.reduce((s, f) => s + (f.importe_pagado || 0), 0),
+                    total_saldo_a: data.filasA.reduce((s, f) => s + (f.saldo_a_pagar || 0), 0),
+                    total_saldo_b: data.filasB.reduce((s, f) => s + (f.saldo_a_pagar || 0), 0)
+                };
+
+                renderKPIs(totales, 'Registros');
+                renderTotales(totales);
+                document.getElementById('tituloTabla').textContent = `Nivel 3: ${up}-${ur} | ${justificacion}`;
+                renderTablaNivel3(data.filasA, data.filasB);
+                mostrarResultados();
+            } catch (err) { alert('Error: ' + err.message); }
+            finally { mostrarLoading(false); }
+        }
+
+        function irANivel(nivel) {
+            if (nivel === 1) cargarNivel1();
+            else if (nivel === 2 && contextoNivel.justificacion) cargarNivel2(contextoNivel.justificacion);
+        }
+
+        function actualizarBreadcrumbs() {
+            const bc1 = document.getElementById('bcNivel1');
+            const bc2 = document.getElementById('bcNivel2');
+            const bc3 = document.getElementById('bcNivel3');
+            const sep2 = document.getElementById('bcSep2');
+
+            bc1.className = 'breadcrumb-item' + (nivelActual === 1 ? ' active' : '');
+            
+            if (nivelActual >= 2 && contextoNivel.justificacion) {
+                bc2.style.display = 'inline';
+                sep2.style.display = 'inline';
+                bc2.textContent = contextoNivel.justificacion.length > 40 ? contextoNivel.justificacion.substring(0, 40) + '...' : contextoNivel.justificacion;
+                bc2.className = 'breadcrumb-item' + (nivelActual === 2 ? ' active' : '');
+            } else {
+                bc2.style.display = 'none';
+                sep2.style.display = 'none';
+            }
+
+            if (nivelActual === 3 && contextoNivel.up && contextoNivel.ur) {
+                bc3.style.display = 'inline';
+                bc3.textContent = `${contextoNivel.up}-${contextoNivel.ur}`;
+                bc3.className = 'breadcrumb-item active';
+            } else {
+                bc3.style.display = 'none';
+            }
+        }
+
+        function renderKPIs(totales, labelGrupos) {
+            document.getElementById('lblGrupos').textContent = labelGrupos;
+            document.getElementById('cntGrupos').textContent = fmtInt.format(totales.total_grupos);
+            document.getElementById('cntCambios').textContent = fmtInt.format(totales.con_cambios);
+            document.getElementById('cntSoloA').textContent = fmtInt.format(totales.solo_a);
+            document.getElementById('cntSoloB').textContent = fmtInt.format(totales.solo_b);
+            document.getElementById('resumenPanel').style.display = 'grid';
+        }
+
+        function renderTotales(totales) {
+            const f1 = fechasComp.a;
+            const f2 = fechasComp.b;
+            const items = [
+                { lbl: `Original ${f1}`, val: fmt.format(totales.total_orig_a) },
+                { lbl: `Original ${f2}`, val: fmt.format(totales.total_orig_b) },
+                { lbl: `Δ Original`, val: fmtDif(totales.total_orig_b - totales.total_orig_a), raw: true },
+                { lbl: `Pagado ${f1}`, val: fmt.format(totales.total_pag_a) },
+                { lbl: `Pagado ${f2}`, val: fmt.format(totales.total_pag_b) },
+                { lbl: `Δ Pagado`, val: fmtDif(totales.total_pag_b - totales.total_pag_a), raw: true },
+                { lbl: `Saldo ${f1}`, val: fmt.format(totales.total_saldo_a) },
+                { lbl: `Saldo ${f2}`, val: fmt.format(totales.total_saldo_b) },
+                { lbl: `Δ Saldo`, val: fmtDif(totales.total_saldo_b - totales.total_saldo_a), raw: true }
+            ];
+            document.getElementById('resumenTotales').innerHTML = items.map(it => 
+                `<div class="resumen-item"><div class="lbl">${it.lbl}</div><div class="val">${it.val}</div></div>`
+            ).join('');
+            document.getElementById('totalesCompPanel').style.display = 'block';
+        }
+
+        function renderTablaNivel1(filas) {
+            document.getElementById('theadTabla').innerHTML = `<tr>
+                <th></th><th>Justificación</th>
+                <th class="num">Orig ${fechasComp.a}</th><th class="num">Orig ${fechasComp.b}</th>
+                <th class="num">Δ Original</th>
+                <th class="num">Pag ${fechasComp.a}</th><th class="num">Pag ${fechasComp.b}</th>
+                <th class="num">Δ Pagado</th>
+                <th class="num">Saldo ${fechasComp.a}</th><th class="num">Saldo ${fechasComp.b}</th>
+                <th class="num">Δ Saldo</th>
+                <th class="num">Regs A</th><th class="num">Regs B</th>
+            </tr>`;
+
+            const tb = document.getElementById('tbTabla');
+            tb.innerHTML = '';
+            filas.forEach(f => {
+                const esSoloA = f.regs_b === 0;
+                const esSoloB = f.regs_a === 0;
+                const badge = esSoloA ? '<span class="badge badge-elim">SOLO A</span>' : (esSoloB ? '<span class="badge badge-nuevo">SOLO B</span>' : '');
+                const justCorta = f.justificacion.length > 50 ? f.justificacion.substring(0, 50) + '...' : f.justificacion;
+                const tbClick = `onclick="cargarNivel2('${f.justificacion.replace(/'/g,"\\'")}')"`;
+                tb.innerHTML += `<tr class="clickable" ${tbClick}>
+                    <td style="color:var(--cyan);font-size:16px;">▸</td>
+                    <td>${justCorta} ${badge}</td>
+                    <td class="num">${fmt.format(f.orig_a||0)}</td>
+                    <td class="num">${fmt.format(f.orig_b||0)}</td>
+                    <td class="num">${fmtDif(f.dif_orig||0)}<br>${fmtDifPct(f.orig_a, f.orig_b)}</td>
+                    <td class="num">${fmt.format(f.pag_a||0)}</td>
+                    <td class="num">${fmt.format(f.pag_b||0)}</td>
+                    <td class="num">${fmtDif(f.dif_pag||0)}</td>
+                    <td class="num">${fmt.format(f.saldo_a||0)}</td>
+                    <td class="num">${fmt.format(f.saldo_b||0)}</td>
+                    <td class="num">${fmtDif(f.dif_saldo||0)}</td>
+                    <td class="num">${f.regs_a||0}</td>
+                    <td class="num">${f.regs_b||0}</td>
+                </tr>`;
+            });
+        }
+
+        function renderTablaNivel2(filas) {
+            document.getElementById('theadTabla').innerHTML = `<tr>
+                <th></th><th>UP</th><th>UR</th><th>Dependencia / UR</th>
+                <th class="num">Orig ${fechasComp.a}</th><th class="num">Orig ${fechasComp.b}</th>
+                <th class="num">Δ Original</th>
+                <th class="num">Pag ${fechasComp.a}</th><th class="num">Pag ${fechasComp.b}</th>
+                <th class="num">Δ Pagado</th>
+                <th class="num">Saldo ${fechasComp.a}</th><th class="num">Saldo ${fechasComp.b}</th>
+                <th class="num">Δ Saldo</th>
+                <th class="num">Regs A</th><th class="num">Regs B</th>
+            </tr>`;
+
+            const tb = document.getElementById('tbTabla');
+            tb.innerHTML = '';
+            filas.forEach(f => {
+                const esSoloA = f.regs_b === 0;
+                const esSoloB = f.regs_a === 0;
+                const badge = esSoloA ? '<span class="badge badge-elim">SOLO A</span>' : (esSoloB ? '<span class="badge badge-nuevo">SOLO B</span>' : '');
+                const depNombre = f.concepto_ur || f.dependencia || '';
+                const depCorta = depNombre.length > 40 ? depNombre.substring(0, 40) + '...' : depNombre;
+                const justEsc = contextoNivel.justificacion.replace(/'/g,"\\'");
+                const tbClick = `onclick="cargarNivel3('${justEsc}','${f.up}','${f.ur}')"`;
+                tb.innerHTML += `<tr class="clickable" ${tbClick}>
+                    <td style="color:var(--cyan);font-size:16px;">▸</td>
+                    <td>${f.up||''}</td><td>${f.ur||''}</td>
+                    <td>${depCorta} ${badge}</td>
+                    <td class="num">${fmt.format(f.orig_a||0)}</td>
+                    <td class="num">${fmt.format(f.orig_b||0)}</td>
+                    <td class="num">${fmtDif(f.dif_orig||0)}<br>${fmtDifPct(f.orig_a, f.orig_b)}</td>
+                    <td class="num">${fmt.format(f.pag_a||0)}</td>
+                    <td class="num">${fmt.format(f.pag_b||0)}</td>
+                    <td class="num">${fmtDif(f.dif_pag||0)}</td>
+                    <td class="num">${fmt.format(f.saldo_a||0)}</td>
+                    <td class="num">${fmt.format(f.saldo_b||0)}</td>
+                    <td class="num">${fmtDif(f.dif_saldo||0)}</td>
+                    <td class="num">${f.regs_a||0}</td>
+                    <td class="num">${f.regs_b||0}</td>
+                </tr>`;
+            });
+        }
+
+        function renderTablaNivel3(filasA, filasB) {
+            document.getElementById('theadTabla').innerHTML = `<tr>
+                <th>Origen</th>
+                <th style="font-size:9px;">Clave Presupuestal</th>
+                <th>No. Justif.</th><th>Nombre Fiscal</th>
+                <th>Concepto</th><th>Partida</th><th>Concepto Partida</th>
+                <th>Estatus</th><th class="num">Importe Original</th>
+                <th class="num">Importe Pagado</th><th class="num">Saldo</th><th>Fecha Emis</th>
+            </tr>`;
+
+            const tb = document.getElementById('tbTabla');
+            tb.innerHTML = '';
+            
+            filasA.forEach(f => {
+                const estCls = f.estatus === 'E' ? 'badge-est-E' : (f.estatus === 'O' ? 'badge-est-O' : (f.estatus === 'P' ? 'badge-est-P' : ''));
+                const cveCorta = (f.cve_presupuestal || '').length > 20 ? (f.cve_presupuestal || '').substring(0, 20) + '...' : (f.cve_presupuestal || '');
+                tb.innerHTML += `<tr>
+                    <td><span class="badge" style="background:rgba(59,130,246,0.15);color:#60a5fa;border:1px solid #3b82f6;">${fechasComp.a}</span></td>
+                    <td style="font-family:var(--font-mono);font-size:10px;color:var(--text-secondary);" title="${f.cve_presupuestal || ''}">${cveCorta}</td>
+                    <td>${f.num_justificacion||''}</td><td>${f.nombre_fiscal||''}</td><td>${f.concepto||''}</td>
+                    <td>${f.partida||''}</td><td>${f.concepto_partida||''}</td>
+                    <td><span class="${estCls}">${f.estatus||''}</span></td>
+                    <td class="num">${fmt.format(f.importe_original||0)}</td>
+                    <td class="num">${fmt.format(f.importe_pagado||0)}</td>
+                    <td class="num">${fmt.format(f.saldo_a_pagar||0)}</td>
+                    <td>${f.fecha_emision||''}</td>
+                </tr>`;
+            });
+            
+            filasB.forEach(f => {
+                const estCls = f.estatus === 'E' ? 'badge-est-E' : (f.estatus === 'O' ? 'badge-est-O' : (f.estatus === 'P' ? 'badge-est-P' : ''));
+                const cveCorta = (f.cve_presupuestal || '').length > 20 ? (f.cve_presupuestal || '').substring(0, 20) + '...' : (f.cve_presupuestal || '');
+                tb.innerHTML += `<tr>
+                    <td><span class="badge" style="background:rgba(16,185,129,0.15);color:#34d399;border:1px solid #10b981;">${fechasComp.b}</span></td>
+                    <td style="font-family:var(--font-mono);font-size:10px;color:var(--text-secondary);" title="${f.cve_presupuestal || ''}">${cveCorta}</td>
+                    <td>${f.num_justificacion||''}</td><td>${f.nombre_fiscal||''}</td><td>${f.concepto||''}</td>
+                    <td>${f.partida||''}</td><td>${f.concepto_partida||''}</td>
+                    <td><span class="${estCls}">${f.estatus||''}</span></td>
+                    <td class="num">${fmt.format(f.importe_original||0)}</td>
+                    <td class="num">${fmt.format(f.importe_pagado||0)}</td>
+                    <td class="num">${fmt.format(f.saldo_a_pagar||0)}</td>
+                    <td>${f.fecha_emision||''}</td>
+                </tr>`;
+            });
+        }
+
+        function mostrarLoading(show) { document.getElementById('cargandoComp').classList.toggle('activo', show); }
+        function ocultarResultados() {
+            document.getElementById('resumenPanel').style.display = 'none';
+            document.getElementById('totalesCompPanel').style.display = 'none';
+            document.getElementById('detallePanel').style.display = 'none';
+            document.getElementById('btnExport').style.display = 'none';
+        }
+        function mostrarResultados() {
+            document.getElementById('detallePanel').style.display = 'block';
+            document.getElementById('btnExport').style.display = 'inline-block';
+        }
+
+        function exportarExcel() {
+            const params = new URLSearchParams({ nivel: nivelActual });
+            if (contextoNivel.justificacion) params.append('justificacion', contextoNivel.justificacion);
+            if (contextoNivel.up) params.append('up', contextoNivel.up);
+            if (contextoNivel.ur) params.append('ur', contextoNivel.ur);
+            window.location = `/api/comparar/export/${fechasComp.a}/${fechasComp.b}?${params}`;
+        }
+
+        function cerrarModal() { document.getElementById('modalDetalle').style.display = 'none'; }
+        window.onclick = function(event) {
+            const modal = document.getElementById('modalDetalle');
+            if (event.target === modal) cerrarModal();
+        }
+
+        cargarBases();
+    </script>
+</body>
+</html>
