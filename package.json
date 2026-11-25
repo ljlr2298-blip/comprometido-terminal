@@ -6,8 +6,22 @@
     "build": "echo 'No build needed'"
   },
   "dependencies": {
-    "better-sqlite3": "...",
-    "express": "...",
-    "xlsx": "..."
-  }
+    "better-sqlite3": "file:...",
+    "express": "file:...",
+    "xlsx": "file:..."
+  },
+  "description": "",
+  "main": "servidor.js",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ljlr2298-blip/comprometido-terminal.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/ljlr2298-blip/comprometido-terminal/issues"
+  },
+  "homepage": "https://github.com/ljlr2298-blip/comprometido-terminal#readme"
 }
