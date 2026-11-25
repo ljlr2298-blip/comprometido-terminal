@@ -1,0 +1,13 @@
+{
+  "name": "comprometido-terminal",
+  "version": "1.0.0",
+  "scripts": {
+    "start": "node servidor.js",
+    "build": "echo 'No build needed'"
+  },
+  "dependencies": {
+    "better-sqlite3": "...",
+    "express": "...",
+    "xlsx": "..."
+  }
+}
