@@ -1,4 +1,4 @@
-﻿node_modules/
+node_modules/
 .env
 *.db
 *.db-shm
@@ -7,3 +7,4 @@ bases/
 data/
 reportes/
 .archivos_procesados.json
+Reporte_Diferencias*.xlsx
