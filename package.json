@@ -1,27 +1,14 @@
-{
+﻿{
   "name": "comprometido-terminal",
   "version": "1.0.0",
+  "description": "Consulta y comparativa de bases comprometido",
+  "main": "servidor.js",
   "scripts": {
-    "start": "node servidor.js",
-    "build": "echo 'No build needed'"
+    "start": "node servidor.js"
   },
   "dependencies": {
-    "better-sqlite3": "file:...",
-    "express": "file:...",
-    "xlsx": "file:..."
-  },
-  "description": "",
-  "main": "servidor.js",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/ljlr2298-blip/comprometido-terminal.git"
-  },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "type": "commonjs",
-  "bugs": {
-    "url": "https://github.com/ljlr2298-blip/comprometido-terminal/issues"
-  },
-  "homepage": "https://github.com/ljlr2298-blip/comprometido-terminal#readme"
+    "better-sqlite3": "^11.0.0",
+    "express": "^4.19.2",
+    "xlsx": "^0.18.5"
+  }
 }
