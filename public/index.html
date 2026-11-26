@@ -216,6 +216,39 @@
         ::-webkit-scrollbar-track { background: var(--bg-primary); }
         ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
         ::-webkit-scrollbar-thumb:hover { background: var(--border-light); }
+
+        /* ═══════════ ESTILOS PARA SUBIR BASE ═══════════ */
+        .upload-grid { display: grid; grid-template-columns: 1fr 2fr; gap: 14px; align-items: end; }
+        .file-drop {
+            border: 2px dashed var(--border); border-radius: 4px; padding: 30px;
+            text-align: center; cursor: pointer; transition: all 0.2s;
+            background: var(--bg-card);
+        }
+        .file-drop:hover { border-color: var(--cyan); background: var(--bg-hover); }
+        .file-drop.dragging { border-color: var(--green); background: rgba(16,185,129,0.05); }
+        .file-drop input[type=file] { display: none; }
+        .file-drop-icon { font-size: 32px; color: var(--cyan); margin-bottom: 8px; }
+        .file-drop-text { font-family: var(--font-mono); font-size: 12px; color: var(--text-secondary); }
+        .file-drop-text strong { color: var(--cyan); }
+        .file-name {
+            margin-top: 8px; font-family: var(--font-mono); font-size: 11px;
+            color: var(--green-bright); word-break: break-all;
+        }
+        .upload-status {
+            margin-top: 16px; padding: 12px; border-radius: 3px;
+            font-family: var(--font-mono); font-size: 12px;
+            display: none;
+        }
+        .upload-status.info { display: block; background: rgba(6,182,212,0.1); border: 1px solid var(--cyan); color: var(--cyan); }
+        .upload-status.success { display: block; background: rgba(16,185,129,0.1); border: 1px solid var(--green); color: var(--green-bright); }
+        .upload-status.error { display: block; background: rgba(239,68,68,0.1); border: 1px solid var(--red); color: var(--red-bright); }
+        .upload-help {
+            margin-top: 16px; padding: 12px 16px; background: var(--bg-card);
+            border-left: 3px solid var(--amber); font-size: 12px; color: var(--text-secondary);
+        }
+        .upload-help strong { color: var(--amber); font-family: var(--font-mono); }
+        .upload-help ul { margin: 8px 0 0 20px; }
+        .upload-help li { margin-bottom: 4px; }
     </style>
 </head>
 <body>
@@ -223,7 +256,7 @@
         <div class="logo">COMPROMETIDO TERMINAL</div>
         <div class="ticker">
             <div><span class="label">SYS:</span> <span id="tickerStatus">ONLINE</span></div>
-            <div><span class="label">DB:</span> <span>comparacion.db</span></div>
+            <div><span class="label">DB:</span> <span>Supabase Cloud</span></div>
             <div><span class="label">TIME:</span> <span id="tickerTime">--:--:--</span></div>
         </div>
     </div>
@@ -231,6 +264,7 @@
     <div class="tabs">
         <button class="tab-btn active" onclick="cambiarVista('consulta', this)">▸ Consulta</button>
         <button class="tab-btn" onclick="cambiarVista('comparativa', this)">▸ Comparativa</button>
+        <button class="tab-btn" onclick="cambiarVista('subir', this)">▸ Subir Base</button>
     </div>
 
     <div class="container">
@@ -291,7 +325,7 @@
             </div>
         </div>
 
-        <!-- ============ VISTA 2: COMPARATIVA CON 3 NIVELES ============ -->
+        <!-- ============ VISTA 2: COMPARATIVA ============ -->
         <div id="vistaComparativa" class="vista">
             <div class="panel" id="panelSelector">
                 <div class="panel-header"><div class="panel-title">Comparativa de Bases</div></div>
@@ -343,6 +377,46 @@
                 </div>
             </div>
         </div>
+
+        <!-- ============ VISTA 3: SUBIR BASE ============ -->
+        <div id="vistaSubir" class="vista">
+            <div class="panel">
+                <div class="panel-header"><div class="panel-title">Subir nueva base de datos</div></div>
+                
+                <div class="upload-grid">
+                    <div class="filtro">
+                        <label>Fecha de la base</label>
+                        <input type="date" id="up-fecha">
+                    </div>
+                    <div>
+                        <label style="display:block;font-family:var(--font-mono);font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">Archivo Excel</label>
+                        <label class="file-drop" id="fileDrop">
+                            <input type="file" id="up-file" accept=".xlsx,.xls">
+                            <div class="file-drop-icon">📊</div>
+                            <div class="file-drop-text">
+                                Arrastra el archivo aquí o <strong>haz clic para seleccionar</strong>
+                            </div>
+                            <div class="file-name" id="fileName"></div>
+                        </label>
+                    </div>
+                </div>
+
+                <button class="btn primary" id="btnSubir" onclick="subirBase()" disabled>▶ Subir base</button>
+                <button class="btn ghost" onclick="limpiarFormulario()">Limpiar</button>
+
+                <div class="upload-status" id="up-status"></div>
+
+                <div class="upload-help">
+                    <strong>Formato esperado del Excel:</strong>
+                    <ul>
+                        <li>Primera fila = encabezados de columnas</li>
+                        <li>Columnas mínimas: <code>justificacion, num_justificacion, nombre_fiscal, up, ur, partida, importe_original, importe_pagado, saldo_a_pagar</code></li>
+                        <li>Una hoja (la primera se procesa automáticamente)</li>
+                        <li>El tamaño del archivo no debe exceder 50 MB</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
     </div>
 
     <div id="modalDetalle" class="modal">
@@ -387,6 +461,7 @@
             btn.classList.add('active');
             document.getElementById('vistaConsulta').classList.toggle('activa', v === 'consulta');
             document.getElementById('vistaComparativa').classList.toggle('activa', v === 'comparativa');
+            document.getElementById('vistaSubir').classList.toggle('activa', v === 'subir');
         }
 
         function fmtDif(v) {
@@ -410,7 +485,10 @@
             const bases = await res.json();
             const cont = document.getElementById('basesList');
             cont.innerHTML = '';
-            if (bases.length === 0) { cont.innerHTML = '<p style="color:var(--text-muted);font-family:var(--font-mono);font-size:12px;">No hay bases. Ejecuta: node transformar.js</p>'; return; }
+            if (bases.length === 0) {
+                cont.innerHTML = '<p style="color:var(--text-muted);font-family:var(--font-mono);font-size:12px;">No hay bases cargadas. Ve a la pestaña <strong style="color:var(--cyan);">▸ Subir Base</strong> para cargar la primera.</p>';
+                return;
+            }
 
             bases.forEach(b => {
                 const btn = document.createElement('button');
@@ -506,7 +584,7 @@
             });
         }
 
-        // ===== VISTA 2: COMPARATIVA CON 3 NIVELES =====
+        // ===== VISTA 2: COMPARATIVA =====
         async function ejecutarComparativa() {
             const f1 = document.getElementById('baseA').value;
             const f2 = document.getElementById('baseB').value;
@@ -814,6 +892,89 @@
             if (event.target === modal) cerrarModal();
         }
 
+        // ═══════════════════════════════════════════════════
+        // ===== VISTA 3: LÓGICA DE SUBIR BASE =====
+        // ═══════════════════════════════════════════════════
+        const fileInput = document.getElementById('up-file');
+        const fileDrop  = document.getElementById('fileDrop');
+        const fileName  = document.getElementById('fileName');
+        const upFecha   = document.getElementById('up-fecha');
+        const btnSubir  = document.getElementById('btnSubir');
+        const upStatus  = document.getElementById('up-status');
+
+        // Habilitar botón cuando haya fecha + archivo
+        function validarFormulario() {
+            const ok = upFecha.value && fileInput.files[0];
+            btnSubir.disabled = !ok;
+        }
+        upFecha.addEventListener('change', validarFormulario);
+        fileInput.addEventListener('change', () => {
+            fileName.textContent = fileInput.files[0] ? '✓ ' + fileInput.files[0].name : '';
+            validarFormulario();
+        });
+
+        // Drag & drop visual
+        fileDrop.addEventListener('dragover', e => { e.preventDefault(); fileDrop.classList.add('dragging'); });
+        fileDrop.addEventListener('dragleave', () => fileDrop.classList.remove('dragging'));
+        fileDrop.addEventListener('drop', e => {
+            e.preventDefault();
+            fileDrop.classList.remove('dragging');
+            if (e.dataTransfer.files.length) {
+                fileInput.files = e.dataTransfer.files;
+                fileName.textContent = '✓ ' + e.dataTransfer.files[0].name;
+                validarFormulario();
+            }
+        });
+
+        function setStatus(tipo, msg) {
+            upStatus.className = 'upload-status ' + tipo;
+            upStatus.textContent = msg;
+        }
+
+        function limpiarFormulario() {
+            upFecha.value = '';
+            fileInput.value = '';
+            fileName.textContent = '';
+            upStatus.className = 'upload-status';
+            btnSubir.disabled = true;
+        }
+
+        async function subirBase() {
+            const fecha = upFecha.value;
+            const file  = fileInput.files[0];
+            if (!fecha || !file) return;
+
+            btnSubir.disabled = true;
+            btnSubir.textContent = '⏳ Procesando...';
+            setStatus('info', `Subiendo ${file.name} (${(file.size/1024/1024).toFixed(1)} MB) para la fecha ${fecha}. No cierres la página...`);
+
+            const fd = new FormData();
+            fd.append('file', file);
+            fd.append('fecha', fecha);
+
+            try {
+                const r = await fetch('/api/subir-base', { method: 'POST', body: fd });
+                const d = await r.json();
+
+                if (r.ok) {
+                    setStatus('success', '✅ ' + d.message);
+                    limpiarFormulario();
+                    btnSubir.textContent = '▶ Subir base';
+                    // Recargar lista de bases sin recargar toda la página
+                    await cargarBases();
+                } else {
+                    setStatus('error', '❌ ' + (d.error || 'Error desconocido'));
+                    btnSubir.disabled = false;
+                    btnSubir.textContent = '▶ Subir base';
+                }
+            } catch (e) {
+                setStatus('error', '❌ Error de red: ' + e.message);
+                btnSubir.disabled = false;
+                btnSubir.textContent = '▶ Subir base';
+            }
+        }
+
+        // Inicializar
         cargarBases();
     </script>
 </body>
