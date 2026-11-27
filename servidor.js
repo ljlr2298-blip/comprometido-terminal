@@ -516,7 +516,7 @@ app.post('/api/subir-base', upload.single('file'), async (req, res) => {
             return res.status(400).json({ error: 'Ninguna fila tenía clave presupuestal válida (mínimo 41 caracteres)' });
         }
 
-        const loteSize = 1000;
+        const loteSize = 250;
         for (let i = 0; i < datosParaInsertar.length; i += loteSize) {
             const lote = datosParaInsertar.slice(i, i + loteSize);
             const { error } = await supabase.from('comprometidos').insert(lote);
