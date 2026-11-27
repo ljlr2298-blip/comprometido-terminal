@@ -215,28 +215,84 @@ app.get('/api/partidas/:fecha', async (req, res) => {
 
 // ═══════════════════════════════════════════════════════════
 // 5. ✅ DRILL-DOWN: Nivel 1 — Dependencias (UP+UR)
-//    Usa función SQL en Supabase (GROUP BY nativo)
-//    Trae solo ~100 filas en vez de 96,000
-// ═══════════════════════════════════════════════════════════
+// Versión sin RPC: hace la consulta directa y agrupa en Node.js
 app.get('/api/dependencias/:fecha', async (req, res) => {
     if (!validaFecha(req.params.fecha)) return res.status(400).json({ error: 'Fecha inválida' });
 
-    // Llamada a la función SQL en Supabase (GROUP BY nativo)
-    const { data: dependencias, error: errD } = await supabase
-        .rpc('get_dependencias', { p_fecha: req.params.fecha });
-    if (errD) return res.status(500).json({ error: errD.message });
+    try {
+        // Traer todos los registros en bloques de 1000
+        let todosLosDatos = [];
+        let offset = 0;
+        const batchSize = 1000;
+        let hayMas = true;
 
-    // Totales globales (también vía SQL)
-    const { data: totalesData, error: errT } = await supabase
-        .rpc('get_totales_fecha', { p_fecha: req.params.fecha });
-    if (errT) return res.status(500).json({ error: errT.message });
+        while (hayMas) {
+            const { data, error } = await supabase
+                .from('comprometidos')
+                .select('up, ur, concepto_ur, dependencia, importe_original, importe_pagado, saldo_a_pagar')
+                .eq('fecha', req.params.fecha)
+                .range(offset, offset + batchSize - 1);
 
-    const totales = totalesData[0] || {
-        total_registros: 0,
-        total_original: 0,
-        total_pagado: 0,
-        total_saldo: 0
-    };
+            if (error) throw error;
+            if (!data || data.length === 0) { hayMas = false; break; }
+
+            todosLosDatos.push(...data);
+            if (data.length < batchSize) { hayMas = false; }
+            else { offset += batchSize; }
+        }
+
+        // Agrupar en memoria
+        const mapa = new Map();
+        let totalRegistros = 0;
+        let totalOriginal = 0;
+        let totalPagado = 0;
+        let totalSaldo = 0;
+
+        todosLosDatos.forEach(row => {
+            const key = `${row.up}-${row.ur}`;
+            if (!mapa.has(key)) {
+                mapa.set(key, {
+                    up: row.up,
+                    ur: row.ur,
+                    concepto_ur: row.concepto_ur || '',
+                    dependencia: row.dependencia || '',
+                    registros: 0,
+                    importe_original: 0,
+                    importe_pagado: 0,
+                    saldo_a_pagar: 0
+                });
+            }
+            const item = mapa.get(key);
+            item.registros += 1;
+            item.importe_original += parseFloat(row.importe_original) || 0;
+            item.importe_pagado += parseFloat(row.importe_pagado) || 0;
+            item.saldo_a_pagar += parseFloat(row.saldo_a_pagar) || 0;
+
+            totalRegistros += 1;
+            totalOriginal += parseFloat(row.importe_original) || 0;
+            totalPagado += parseFloat(row.importe_pagado) || 0;
+            totalSaldo += parseFloat(row.saldo_a_pagar) || 0;
+        });
+
+        const dependencias = Array.from(mapa.values()).sort((a, b) => {
+            if (a.up !== b.up) return a.up.localeCompare(b.up);
+            return a.ur.localeCompare(b.ur);
+        });
+
+        res.json({
+            dependencias,
+            totales: {
+                total_registros: totalRegistros,
+                total_original: totalOriginal,
+                total_pagado: totalPagado,
+                total_saldo: totalSaldo
+            }
+        });
+    } catch (error) {
+        console.error('❌ Error en /api/dependencias:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
 
     res.json({ dependencias: dependencias || [], totales });
 });
