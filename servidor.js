@@ -223,12 +223,61 @@ app.get('/api/comparar/nivel3/:f1/:f2', async (req, res) => {
     res.json({ filasA: filasA || [], filasB: filasB || [] });
 });
 
-// 9. 🚀 NUEVO: Endpoint para subir una base nueva desde la web
+// 9. 🚀 Endpoint para subir una base nueva desde la web
+// --- Normalizar encabezados: minúsculas, sin acentos, sin espacios/puntos ---
+function normalizarClave(k) {
+    return String(k)
+        .toLowerCase()
+        .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^a-z0-9]/g, '');
+}
+
+function mapearFila(row) {
+    const n = {};
+    for (const [k, v] of Object.entries(row)) n[normalizarClave(k)] = v;
+
+    const txt = (...cands) => {
+        for (const c of cands) {
+            const v = n[c];
+            if (v !== undefined && v !== null && String(v).trim() !== '') return String(v).trim();
+        }
+        return '';
+    };
+    const num = (...cands) => {
+        for (const c of cands) {
+            const v = n[c];
+            if (v !== undefined && v !== null && String(v).trim() !== '') {
+                const x = parseFloat(String(v).replace(/[$,\s]/g, ''));
+                if (!isNaN(x)) return x;
+            }
+        }
+        return 0;
+    };
+
+    return {
+        justificacion:      txt('justificacion','tipodejustificacion','justificacions'),
+        num_justificacion:  txt('numjustificacion','nojustificacion','numerojustificacion','justificacionnumero','nofolio','folio'),
+        nombre_fiscal:      txt('nombrefiscal','fiscal','proveedor','beneficiario'),
+        cve_presupuestal:   txt('clavepresupuestal','cvepresupuestal','clavereal','clavepresupuestaria'),
+        up:                 txt('up','unidadprogramatica'),
+        ur:                 txt('ur','unidadresponsable'),
+        partida:            txt('partida','partidadelgasto','partidadegasto'),
+        concepto_partida:   txt('conceptopartida','descripcionpartida'),
+        concepto:           txt('concepto','conceptodelpago','descripcion'),
+        estatus:            txt('estatus','estado','estatuspago'),
+        importe_original:   num('importeoriginal','original','montooriginal','solicitado'),
+        importe_pagado:     num('importepagado','pagado','montopagado','amortizado'),
+        saldo_a_pagar:      num('saldopagar','saldoapagar','saldo','saldorestante','pendiente'),
+        fecha_emision:      txt('fechaemision','fechadeldocumento','fechadeemision'),
+        dependencia:        txt('dependencia','unidadadministrativa','entidad'),
+        concepto_ur:        txt('conceptour','nombreur')
+    };
+}
+
 app.post('/api/subir-base', upload.single('file'), async (req, res) => {
     try {
         if (!req.file) return res.status(400).json({ error: 'No se proporcionó archivo' });
 
-        // Leer el Excel
         const workbook = xlsx.readFile(req.file.path);
         const sheetName = workbook.SheetNames[0];
         const jsonData = xlsx.utils.sheet_to_json(workbook.Sheets[sheetName]);
@@ -238,43 +287,24 @@ app.post('/api/subir-base', upload.single('file'), async (req, res) => {
             return res.status(400).json({ error: 'El archivo está vacío' });
         }
 
-        // La primera fila define la fecha (asumimos que hay una columna 'fecha' o usamos la fecha del nombre del archivo)
-        // Para simplificar, vamos a extraer la fecha del primer registro o del nombre del archivo.
-        // Asumiremos que el Excel tiene una columna 'fecha' o la inferimos.
-        // Mejor aún: vamos a pedir la fecha en el formData o inferirla.
-        // Vamos a inferir la fecha del nombre del archivo si tiene formato YYYY-MM-DD, o usar la de la primera fila.
+        // Fecha: viene del formulario, o se infiere de la primera fila
         let fechaBase = req.body.fecha;
-        if (!fechaBase && jsonData[0].fecha) {
-            fechaBase = String(jsonData[0].fecha).substring(0, 10); // Asegurar formato YYYY-MM-DD
-        }
+        if (!fechaBase && jsonData[0].fecha) fechaBase = String(jsonData[0].fecha).substring(0, 10);
         if (!fechaBase || !validaFecha(fechaBase)) {
             fs.unlinkSync(req.file.path);
-            return res.status(400).json({ error: 'No se pudo determinar la fecha de la base. Asegúrate de que el Excel tenga una columna "fecha" o envíala en el formulario.' });
+            return res.status(400).json({ error: 'No se pudo determinar la fecha. Envíala en el campo "fecha".' });
         }
 
-        // Preparar datos para Supabase (mapear columnas si es necesario)
-        // Supabase espera los nombres exactos de las columnas.
+        // 🧹 Idempotencia: borrar cualquier intento previo de esta fecha
+        await supabase.from('comprometidos').delete().eq('fecha', fechaBase);
+
+        // Mapear filas con encabezados flexibles
         const datosParaInsertar = jsonData.map(row => ({
             fecha: fechaBase,
-            justificacion: String(row.justificacion || ''),
-            num_justificacion: String(row.num_justificacion || ''),
-            nombre_fiscal: String(row.nombre_fiscal || ''),
-            cve_presupuestal: String(row.cve_presupuestal || ''),
-            up: String(row.up || ''),
-            ur: String(row.ur || ''),
-            partida: String(row.partida || ''),
-            concepto_partida: String(row.concepto_partida || ''),
-            concepto: String(row.concepto || ''),
-            estatus: String(row.estatus || ''),
-            importe_original: parseFloat(row.importe_original) || 0,
-            importe_pagado: parseFloat(row.importe_pagado) || 0,
-            saldo_a_pagar: parseFloat(row.saldo_a_pagar) || 0,
-            fecha_emision: String(row.fecha_emision || ''),
-            dependencia: String(row.dependencia || ''),
-            concepto_ur: String(row.concepto_ur || '')
+            ...mapearFila(row)
         }));
 
-        // Insertar en Supabase en lotes de 1000 (límite de Supabase)
+        // Insertar en lotes de 1000
         const loteSize = 1000;
         for (let i = 0; i < datosParaInsertar.length; i += loteSize) {
             const lote = datosParaInsertar.slice(i, i + loteSize);
@@ -282,10 +312,8 @@ app.post('/api/subir-base', upload.single('file'), async (req, res) => {
             if (error) throw new Error(`Error al insertar lote: ${error.message}`);
         }
 
-        // Limpiar archivo temporal
         fs.unlinkSync(req.file.path);
-
-        res.json({ message: `Base ${fechaBase} subida exitosamente con ${datosParaInsertar.length} registros.` });
+        res.json({ message: `Base ${fechaBase} subida con ${datosParaInsertar.length} registros.` });
     } catch (error) {
         console.error('Error al subir base:', error);
         if (req.file && fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
