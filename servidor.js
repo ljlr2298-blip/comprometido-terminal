@@ -161,7 +161,8 @@ app.get('/api/upur/:fecha', async (req, res) => {
         .select('up, ur, concepto_ur, dependencia')
         .eq('fecha', req.params.fecha)
         .not('up', 'is', null)
-        .not('ur', 'is', null);
+        .not('ur', 'is', null)
+        .range(0, 100000);
     if (error) return res.status(500).json({ error: error.message });
 
     const unique = [];
@@ -183,7 +184,8 @@ app.get('/api/justificaciones/:fecha', async (req, res) => {
         .from('comprometidos')
         .select('justificacion')
         .eq('fecha', req.params.fecha)
-        .not('justificacion', 'is', null);
+        .not('justificacion', 'is', null)
+        .range(0, 100000);
     if (error) return res.status(500).json({ error: error.message });
     const unique = [...new Set(data.map(r => r.justificacion))].filter(Boolean).sort();
     res.json(unique.map(j => ({ justificacion: j })));
@@ -196,7 +198,8 @@ app.get('/api/partidas/:fecha', async (req, res) => {
         .from('comprometidos')
         .select('partida, concepto_partida')
         .eq('fecha', req.params.fecha)
-        .not('partida', 'is', null);
+        .not('partida', 'is', null)
+        .range(0, 100000);
     if (error) return res.status(500).json({ error: error.message });
 
     const unique = [];
@@ -216,14 +219,16 @@ app.get('/api/partidas/:fecha', async (req, res) => {
 app.get('/api/dependencias/:fecha', async (req, res) => {
     if (!validaFecha(req.params.fecha)) return res.status(400).json({ error: 'Fecha inválida' });
 
+    // ✅ FIX: .range(0, 100000) para evitar el límite de 1000 de Supabase
     const { data, error } = await supabase
         .from('comprometidos')
         .select('up, ur, concepto_ur, dependencia, importe_original, importe_pagado, saldo_a_pagar')
-        .eq('fecha', req.params.fecha);
+        .eq('fecha', req.params.fecha)
+        .range(0, 100000);
 
     if (error) return res.status(500).json({ error: error.message });
 
-    // Agrupar en memoria (rápido para ~100-200 grupos)
+    // Agrupar en memoria
     const mapa = new Map();
     let totalRegistros = 0;
     let totalOriginal = 0;
@@ -280,7 +285,6 @@ app.get('/api/base/:fecha', async (req, res) => {
 
     const { up, ur, justificacion, partida, estatus, busqueda, limite, offset } = req.query;
 
-    // UP y UR son OBLIGATORIOS en drill-down
     if (!up || !ur) {
         return res.status(400).json({ error: 'Faltan parámetros up y ur' });
     }
@@ -288,7 +292,6 @@ app.get('/api/base/:fecha', async (req, res) => {
     const lim = Math.min(parseInt(limite) || 1000, 5000);
     const off = parseInt(offset) || 0;
 
-    // Construir query base
     const construirQuery = () => {
         let q = supabase
             .from('comprometidos')
@@ -307,8 +310,7 @@ app.get('/api/base/:fecha', async (req, res) => {
         return q;
     };
 
-    // 1) Totales de esta dependencia (con filtros aplicados)
-    const { data: todas, error: errT } = await construirQuery();
+    const { data: todas, error: errT } = await construirQuery().range(0, 100000);
     if (errT) return res.status(500).json({ error: errT.message });
 
     const totales = {
@@ -318,7 +320,6 @@ app.get('/api/base/:fecha', async (req, res) => {
         total_saldo: todas.reduce((s, r) => s + (parseFloat(r.saldo_a_pagar) || 0), 0)
     };
 
-    // 2) Filas paginadas
     const { data: filas, error } = await construirQuery()
         .order('importe_original', { ascending: false })
         .range(off, off + lim - 1);
@@ -344,11 +345,13 @@ app.get('/api/comparar/nivel1/:f1/:f2', async (req, res) => {
     const { data: dataA, error: errA } = await supabase
         .from('comprometidos')
         .select('justificacion, importe_original, importe_pagado, saldo_a_pagar')
-        .eq('fecha', req.params.f1);
+        .eq('fecha', req.params.f1)
+        .range(0, 100000);
     const { data: dataB, error: errB } = await supabase
         .from('comprometidos')
         .select('justificacion, importe_original, importe_pagado, saldo_a_pagar')
-        .eq('fecha', req.params.f2);
+        .eq('fecha', req.params.f2)
+        .range(0, 100000);
     if (errA || errB) return res.status(500).json({ error: 'Error al obtener datos' });
 
     const mapa = new Map();
@@ -398,11 +401,13 @@ app.get('/api/comparar/nivel2/:f1/:f2', async (req, res) => {
     const { data: dataA } = await supabase
         .from('comprometidos')
         .select('up, ur, concepto_ur, dependencia, importe_original, importe_pagado, saldo_a_pagar')
-        .eq('fecha', req.params.f1).eq('justificacion', justificacion);
+        .eq('fecha', req.params.f1).eq('justificacion', justificacion)
+        .range(0, 100000);
     const { data: dataB } = await supabase
         .from('comprometidos')
         .select('up, ur, concepto_ur, dependencia, importe_original, importe_pagado, saldo_a_pagar')
-        .eq('fecha', req.params.f2).eq('justificacion', justificacion);
+        .eq('fecha', req.params.f2).eq('justificacion', justificacion)
+        .range(0, 100000);
 
     const mapa = new Map();
     const procesar = (data, origen) => {
@@ -451,11 +456,13 @@ app.get('/api/comparar/nivel3/:f1/:f2', async (req, res) => {
     const { data: filasA } = await supabase
         .from('comprometidos').select('*')
         .eq('fecha', req.params.f1).eq('up', up).eq('ur', ur).eq('justificacion', justificacion)
-        .order('importe_original', { ascending: false });
+        .order('importe_original', { ascending: false })
+        .range(0, 100000);
     const { data: filasB } = await supabase
         .from('comprometidos').select('*')
         .eq('fecha', req.params.f2).eq('up', up).eq('ur', ur).eq('justificacion', justificacion)
-        .order('importe_original', { ascending: false });
+        .order('importe_original', { ascending: false })
+        .range(0, 100000);
 
     res.json({ filasA: filasA || [], filasB: filasB || [] });
 });
