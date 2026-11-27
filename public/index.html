@@ -212,6 +212,18 @@
         .breadcrumb-sep { color: var(--text-muted); }
         .breadcrumb-sep::before { content: '▸'; }
         
+        .paginacion {
+            display: flex; align-items: center; justify-content: center; gap: 12px;
+            margin-top: 16px; padding: 12px; font-family: var(--font-mono); font-size: 12px;
+        }
+        .paginacion button {
+            padding: 6px 12px; background: var(--bg-card); border: 1px solid var(--border);
+            color: var(--text-secondary); cursor: pointer; border-radius: 3px;
+        }
+        .paginacion button:hover:not(:disabled) { border-color: var(--cyan); color: var(--cyan); }
+        .paginacion button:disabled { opacity: 0.4; cursor: not-allowed; }
+        .paginacion .info { color: var(--text-muted); }
+        
         ::-webkit-scrollbar { width: 8px; height: 8px; }
         ::-webkit-scrollbar-track { background: var(--bg-primary); }
         ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
@@ -268,59 +280,105 @@
     </div>
 
     <div class="container">
-        <!-- ============ VISTA 1: CONSULTA ============ -->
+        <!-- ============ VISTA 1: CONSULTA (DRILL-DOWN) ============ -->
         <div id="vistaConsulta" class="vista activa">
             <div class="panel">
                 <div class="panel-header"><div class="panel-title">Base Activa</div></div>
                 <div id="basesList" class="bases-list"></div>
             </div>
             
-            <div class="kpi-grid" id="totalesPanel" style="display:none;">
-                <div class="kpi blue"><div class="kpi-label">Registros</div><div class="kpi-value" id="totalRegistros">0</div></div>
-                <div class="kpi"><div class="kpi-label">Importe Original</div><div class="kpi-value" id="totalOriginal">$0</div></div>
-                <div class="kpi green"><div class="kpi-label">Importe Pagado</div><div class="kpi-value" id="totalPagado">$0</div></div>
-                <div class="kpi amber"><div class="kpi-label">Saldo a Pagar</div><div class="kpi-value" id="totalSaldo">$0</div></div>
+            <!-- KPIs globales -->
+            <div class="kpi-grid" id="totalesGlobales" style="display:none;">
+                <div class="kpi blue"><div class="kpi-label">Registros</div><div class="kpi-value" id="globalRegistros">0</div></div>
+                <div class="kpi"><div class="kpi-label">Importe Original</div><div class="kpi-value" id="globalOriginal">$0</div></div>
+                <div class="kpi green"><div class="kpi-label">Importe Pagado</div><div class="kpi-value" id="globalPagado">$0</div></div>
+                <div class="kpi amber"><div class="kpi-label">Saldo a Pagar</div><div class="kpi-value" id="globalSaldo">$0</div></div>
+            </div>
+
+            <!-- Breadcrumb -->
+            <div class="breadcrumbs" id="breadcrumbConsulta" style="display:none;">
+                <span class="breadcrumb-item" id="bcDependencias" onclick="volverADependencias()">Dependencias</span>
+                <span class="breadcrumb-sep"></span>
+                <span class="breadcrumb-item active" id="bcDependenciaActual"></span>
             </div>
             
-            <div class="panel" id="filtrosPanel" style="display:none;">
-                <div class="panel-header"><div class="panel-title">Filtros</div></div>
-                <div class="filtros">
-                    <div class="filtro"><label>Dependencia + UR</label><select id="filtroUPUR"><option value="">Todas</option></select></div>
-                    <div class="filtro"><label>Justificación</label><select id="filtroJustificacion"><option value="">Todas</option></select></div>
-                    <div class="filtro"><label>Partida</label><select id="filtroPartida"><option value="">Todas</option></select></div>
-                    <div class="filtro">
-                        <label>Estatus</label>
-                        <select id="filtroEstatus">
-                            <option value="">Todos</option>
-                            <option value="E">Pagado (E)</option>
-                            <option value="O">Ordenado (O)</option>
-                            <option value="P">Parcial (P)</option>
-                        </select>
+            <!-- NIVEL 1: Lista de dependencias -->
+            <div id="nivelDependencias">
+                <div class="panel">
+                    <div class="panel-header">
+                        <div class="panel-title">Dependencias (UP+UR)</div>
+                        <div style="font-family:var(--font-mono);font-size:11px;color:var(--text-muted);" id="contadorDependencias"></div>
                     </div>
-                    <div class="filtro" style="grid-column: span 2;">
-                        <label>Búsqueda libre</label>
-                        <input type="text" id="filtroBusqueda" placeholder="No. Justificación, Fiscal, Concepto o Clave Presupuestal completa...">
+                    <div class="table-wrap tabla-scroll">
+                        <table>
+                            <thead><tr>
+                                <th></th><th>UP</th><th>UR</th><th>Dependencia / UR</th>
+                                <th class="num">Registros</th>
+                                <th class="num">Importe Original</th>
+                                <th class="num">Importe Pagado</th>
+                                <th class="num">Saldo</th>
+                            </tr></thead>
+                            <tbody id="tablaDependencias"></tbody>
+                        </table>
                     </div>
                 </div>
-                <button class="btn primary" onclick="cargarDatos()">▶ Ejecutar</button>
             </div>
-            
-            <div class="panel" id="tablaPanel" style="display:none;">
-                <div class="panel-header">
-                    <div class="panel-title">Resultados</div>
-                    <div style="font-family:var(--font-mono);font-size:11px;color:var(--text-muted);" id="contadorRegistros"></div>
+
+            <!-- NIVEL 2: Registros de una dependencia -->
+            <div id="nivelRegistros" style="display:none;">
+                <button class="btn ghost" onclick="volverADependencias()">◂ Volver a Dependencias</button>
+                
+                <div class="kpi-grid" id="totalesDependencia" style="display:none;margin-top:16px;">
+                    <div class="kpi blue"><div class="kpi-label">Registros</div><div class="kpi-value" id="depRegistros">0</div></div>
+                    <div class="kpi"><div class="kpi-label">Importe Original</div><div class="kpi-value" id="depOriginal">$0</div></div>
+                    <div class="kpi green"><div class="kpi-label">Importe Pagado</div><div class="kpi-value" id="depPagado">$0</div></div>
+                    <div class="kpi amber"><div class="kpi-label">Saldo a Pagar</div><div class="kpi-value" id="depSaldo">$0</div></div>
                 </div>
-                <div class="table-wrap tabla-scroll">
-                    <table>
-                        <thead><tr>
-                            <th>Justificación</th><th>No. Justif.</th><th>Nombre Fiscal</th>
-                            <th style="font-size:9px;">Clave Presupuestal</th>
-                            <th>UP</th><th>UR</th><th>Partida</th><th>Concepto Partida</th><th>Estatus</th>
-                            <th class="num">Importe Original</th><th class="num">Importe Pagado</th>
-                            <th class="num">Saldo</th><th>Fecha Emis</th>
-                        </tr></thead>
-                        <tbody id="tablaBody"></tbody>
-                    </table>
+
+                <div class="panel" id="filtrosDependencia" style="display:none;margin-top:16px;">
+                    <div class="panel-header"><div class="panel-title">Filtros dentro de la dependencia</div></div>
+                    <div class="filtros">
+                        <div class="filtro"><label>Justificación</label><select id="filtroJustificacion"><option value="">Todas</option></select></div>
+                        <div class="filtro"><label>Partida</label><select id="filtroPartida"><option value="">Todas</option></select></div>
+                        <div class="filtro">
+                            <label>Estatus</label>
+                            <select id="filtroEstatus">
+                                <option value="">Todos</option>
+                                <option value="E">Pagado (E)</option>
+                                <option value="O">Ordenado (O)</option>
+                                <option value="P">Parcial (P)</option>
+                            </select>
+                        </div>
+                        <div class="filtro" style="grid-column: span 2;">
+                            <label>Búsqueda libre</label>
+                            <input type="text" id="filtroBusqueda" placeholder="No. Justificación, Fiscal, Concepto o Clave Presupuestal...">
+                        </div>
+                    </div>
+                    <button class="btn primary" onclick="cargarRegistros()">▶ Ejecutar</button>
+                </div>
+
+                <div class="panel" id="tablaRegistros" style="display:none;margin-top:16px;">
+                    <div class="panel-header">
+                        <div class="panel-title">Resultados</div>
+                        <div style="font-family:var(--font-mono);font-size:11px;color:var(--text-muted);" id="contadorRegistros"></div>
+                    </div>
+                    <div class="table-wrap tabla-scroll">
+                        <table>
+                            <thead><tr>
+                                <th>Justificación</th><th>No. Justif.</th><th>Nombre Fiscal</th>
+                                <th style="font-size:9px;">Clave Presupuestal</th>
+                                <th>Partida</th><th>Concepto Partida</th><th>Estatus</th>
+                                <th class="num">Importe Original</th><th class="num">Importe Pagado</th>
+                                <th class="num">Saldo</th><th>Fecha Emis</th>
+                            </tr></thead>
+                            <tbody id="tablaRegistrosBody"></tbody>
+                        </table>
+                    </div>
+                    <div class="paginacion" id="paginacion" style="display:none;">
+                        <button id="btnPrev" onclick="cambiarPagina(-1)">◂ Anterior</button>
+                        <span class="info" id="infoPagina">Página 1</span>
+                        <button id="btnNext" onclick="cambiarPagina(1)">Siguiente ▸</button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -410,7 +468,7 @@
                     <strong>Formato esperado del Excel:</strong>
                     <ul>
                         <li>Primera fila = encabezados de columnas</li>
-                        <li>Columnas mínimas: <code>justificacion, num_justificacion, nombre_fiscal, up, ur, partida, importe_original, importe_pagado, saldo_a_pagar</code></li>
+                        <li>Columnas mínimas: justificacion, num_justificacion, nombre_fiscal, up, ur, partida, importe_original, importe_pagado, saldo_a_pagar</li>
                         <li>Una hoja (la primera se procesa automáticamente)</li>
                         <li>El tamaño del archivo no debe exceder 50 MB</li>
                     </ul>
@@ -452,6 +510,9 @@
         let nivelActual = 0;
         let contextoNivel = { justificacion: null, up: null, ur: null };
 
+        // Variables para drill-down de Consulta
+        let consultaContexto = { up: null, ur: null, pagina: 1, porPagina: 1000 };
+
         setInterval(() => {
             document.getElementById('tickerTime').textContent = new Date().toLocaleTimeString('es-MX');
         }, 1000);
@@ -479,7 +540,9 @@
             return `<span class="${cls}" style="font-size:10px;">${signo}${pct.toFixed(1)}%</span>`;
         }
 
-        // ===== VISTA 1: CONSULTA =====
+        // ═══════════════════════════════════════════════════
+        // VISTA 1: CONSULTA (DRILL-DOWN)
+        // ═══════════════════════════════════════════════════
         async function cargarBases() {
             const res = await fetch('/api/bases');
             const bases = await res.json();
@@ -513,42 +576,93 @@
             document.querySelectorAll('#basesList .base-btn').forEach(b => b.classList.remove('active'));
             if (btn) btn.classList.add('active');
             baseActual = fecha;
-            document.getElementById('totalesPanel').style.display = 'grid';
-            document.getElementById('filtrosPanel').style.display = 'block';
 
-            const resU = await fetch(`/api/upur/${fecha}`);
-            const upur = await resU.json();
-            const selU = document.getElementById('filtroUPUR');
-            selU.innerHTML = '<option value="">Todas</option>';
-            upur.forEach(i => {
-                const nombre = i.concepto_ur || i.dependencia || 'Sin nombre';
-                selU.innerHTML += `<option value="${i.up}-${i.ur}">${i.up}-${i.ur} — ${nombre}</option>`;
+            // Resetear vista a Nivel 1
+            document.getElementById('nivelDependencias').style.display = 'block';
+            document.getElementById('nivelRegistros').style.display = 'none';
+            document.getElementById('breadcrumbConsulta').style.display = 'none';
+
+            await cargarDependencias();
+        }
+
+        async function cargarDependencias() {
+            if (!baseActual) return;
+
+            const res = await fetch(`/api/dependencias/${baseActual}`);
+            const data = await res.json();
+
+            // KPIs globales
+            document.getElementById('globalRegistros').textContent = fmtInt.format(data.totales.total_registros);
+            document.getElementById('globalOriginal').textContent = fmt.format(data.totales.total_original);
+            document.getElementById('globalPagado').textContent = fmt.format(data.totales.total_pagado);
+            document.getElementById('globalSaldo').textContent = fmt.format(data.totales.total_saldo);
+            document.getElementById('totalesGlobales').style.display = 'grid';
+
+            document.getElementById('contadorDependencias').textContent = `${data.dependencias.length} dependencias`;
+
+            const tb = document.getElementById('tablaDependencias');
+            tb.innerHTML = '';
+            data.dependencias.forEach(d => {
+                const nombre = d.concepto_ur || d.dependencia || 'Sin nombre';
+                const tbClick = `onclick="entrarADependencia('${d.up}','${d.ur}','${nombre.replace(/'/g,"\\'")}')"`;
+                tb.innerHTML += `<tr class="clickable" ${tbClick}>
+                    <td style="color:var(--cyan);font-size:16px;">▸</td>
+                    <td>${d.up}</td><td>${d.ur}</td>
+                    <td>${nombre}</td>
+                    <td class="num">${fmtInt.format(d.registros)}</td>
+                    <td class="num">${fmt.format(d.importe_original)}</td>
+                    <td class="num">${fmt.format(d.importe_pagado)}</td>
+                    <td class="num">${fmt.format(d.saldo_a_pagar)}</td>
+                </tr>`;
             });
+        }
 
-            const resJ = await fetch(`/api/justificaciones/${fecha}`);
+        async function entrarADependencia(up, ur, nombre) {
+            consultaContexto = { up, ur, pagina: 1, porPagina: 1000 };
+
+            document.getElementById('nivelDependencias').style.display = 'none';
+            document.getElementById('nivelRegistros').style.display = 'block';
+            document.getElementById('breadcrumbConsulta').style.display = 'flex';
+            document.getElementById('bcDependenciaActual').textContent = `${up}-${ur} — ${nombre}`;
+
+            // Cargar filtros
+            await cargarFiltrosDependencia();
+            await cargarRegistros();
+        }
+
+        function volverADependencias() {
+            document.getElementById('nivelDependencias').style.display = 'block';
+            document.getElementById('nivelRegistros').style.display = 'none';
+            document.getElementById('breadcrumbConsulta').style.display = 'none';
+            consultaContexto = { up: null, ur: null, pagina: 1, porPagina: 1000 };
+        }
+
+        async function cargarFiltrosDependencia() {
+            const { up, ur } = consultaContexto;
+
+            const resJ = await fetch(`/api/justificaciones/${baseActual}`);
             const justs = await resJ.json();
             const selJ = document.getElementById('filtroJustificacion');
             selJ.innerHTML = '<option value="">Todas</option>';
             justs.forEach(j => { selJ.innerHTML += `<option value="${j.justificacion}">${j.justificacion}</option>`; });
 
-            const resP = await fetch(`/api/partidas/${fecha}`);
+            const resP = await fetch(`/api/partidas/${baseActual}`);
             const parts = await resP.json();
             const selP = document.getElementById('filtroPartida');
             selP.innerHTML = '<option value="">Todas</option>';
             parts.forEach(p => { selP.innerHTML += `<option value="${p.partida}">${p.partida} — ${p.concepto_partida}</option>`; });
-
-            cargarDatos();
         }
 
-        async function cargarDatos() {
-            if (!baseActual) return;
-            const params = new URLSearchParams();
-            const upur = document.getElementById('filtroUPUR').value;
+        async function cargarRegistros() {
+            const { up, ur, pagina, porPagina } = consultaContexto;
+            const offset = (pagina - 1) * porPagina;
+
+            const params = new URLSearchParams({ up, ur, limite: porPagina, offset });
             const justificacion = document.getElementById('filtroJustificacion').value;
             const partida = document.getElementById('filtroPartida').value;
             const estatus = document.getElementById('filtroEstatus').value;
             const busqueda = document.getElementById('filtroBusqueda').value;
-            if (upur) params.append('upur', upur);
+
             if (justificacion) params.append('justificacion', justificacion);
             if (partida) params.append('partida', partida);
             if (estatus) params.append('estatus', estatus);
@@ -557,14 +671,18 @@
             const res = await fetch(`/api/base/${baseActual}?${params}`);
             const data = await res.json();
 
-            document.getElementById('totalRegistros').textContent = fmtInt.format(data.totales.total_registros);
-            document.getElementById('totalOriginal').textContent = fmt.format(data.totales.total_original || 0);
-            document.getElementById('totalPagado').textContent = fmt.format(data.totales.total_pagado || 0);
-            document.getElementById('totalSaldo').textContent = fmt.format(data.totales.total_saldo || 0);
+            // KPIs de la dependencia
+            document.getElementById('depRegistros').textContent = fmtInt.format(data.totales.total_registros);
+            document.getElementById('depOriginal').textContent = fmt.format(data.totales.total_original);
+            document.getElementById('depPagado').textContent = fmt.format(data.totales.total_pagado);
+            document.getElementById('depSaldo').textContent = fmt.format(data.totales.total_saldo);
+            document.getElementById('totalesDependencia').style.display = 'grid';
+            document.getElementById('filtrosDependencia').style.display = 'block';
 
-            document.getElementById('tablaPanel').style.display = 'block';
-            document.getElementById('contadorRegistros').textContent = `${fmtInt.format(data.filas.length)} / ${fmtInt.format(data.totales.total_registros)} registros`;
-            const tb = document.getElementById('tablaBody');
+            document.getElementById('tablaRegistros').style.display = 'block';
+            document.getElementById('contadorRegistros').textContent = `Página ${data.pagina} de ${data.totalPaginas} | ${fmtInt.format(data.totales.total_registros)} registros`;
+
+            const tb = document.getElementById('tablaRegistrosBody');
             tb.innerHTML = '';
             data.filas.forEach(f => {
                 const estCls = f.estatus === 'E' ? 'badge-est-E' : (f.estatus === 'O' ? 'badge-est-O' : (f.estatus === 'P' ? 'badge-est-P' : ''));
@@ -574,7 +692,7 @@
                     <td>${f.num_justificacion||''}</td>
                     <td>${f.nombre_fiscal||''}</td>
                     <td style="font-family:var(--font-mono);font-size:9px;color:var(--text-secondary);" title="${f.cve_presupuestal || ''}">${cveCorta}</td>
-                    <td>${f.up||''}</td><td>${f.ur||''}</td><td>${f.partida||''}</td><td>${f.concepto_partida||''}</td>
+                    <td>${f.partida||''}</td><td>${f.concepto_partida||''}</td>
                     <td><span class="${estCls}">${f.estatus||''}</span></td>
                     <td class="num">${fmt.format(f.importe_original||0)}</td>
                     <td class="num">${fmt.format(f.importe_pagado||0)}</td>
@@ -582,9 +700,27 @@
                     <td>${f.fecha_emision||''}</td>
                 </tr>`;
             });
+
+            // Paginación
+            const pag = document.getElementById('paginacion');
+            if (data.totalPaginas > 1) {
+                pag.style.display = 'flex';
+                document.getElementById('infoPagina').textContent = `Página ${data.pagina} de ${data.totalPaginas}`;
+                document.getElementById('btnPrev').disabled = data.pagina === 1;
+                document.getElementById('btnNext').disabled = data.pagina === data.totalPaginas;
+            } else {
+                pag.style.display = 'none';
+            }
         }
 
-        // ===== VISTA 2: COMPARATIVA =====
+        function cambiarPagina(delta) {
+            consultaContexto.pagina += delta;
+            cargarRegistros();
+        }
+
+        // ═══════════════════════════════════════════════════
+        // VISTA 2: COMPARATIVA
+        // ═══════════════════════════════════════════════════
         async function ejecutarComparativa() {
             const f1 = document.getElementById('baseA').value;
             const f2 = document.getElementById('baseB').value;
@@ -893,7 +1029,7 @@
         }
 
         // ═══════════════════════════════════════════════════
-        // ===== VISTA 3: LÓGICA DE SUBIR BASE =====
+        // VISTA 3: SUBIR BASE
         // ═══════════════════════════════════════════════════
         const fileInput = document.getElementById('up-file');
         const fileDrop  = document.getElementById('fileDrop');
@@ -902,7 +1038,6 @@
         const btnSubir  = document.getElementById('btnSubir');
         const upStatus  = document.getElementById('up-status');
 
-        // Habilitar botón cuando haya fecha + archivo
         function validarFormulario() {
             const ok = upFecha.value && fileInput.files[0];
             btnSubir.disabled = !ok;
@@ -913,7 +1048,6 @@
             validarFormulario();
         });
 
-        // Drag & drop visual
         fileDrop.addEventListener('dragover', e => { e.preventDefault(); fileDrop.classList.add('dragging'); });
         fileDrop.addEventListener('dragleave', () => fileDrop.classList.remove('dragging'));
         fileDrop.addEventListener('drop', e => {
@@ -960,7 +1094,6 @@
                     setStatus('success', '✅ ' + d.message);
                     limpiarFormulario();
                     btnSubir.textContent = '▶ Subir base';
-                    // Recargar lista de bases sin recargar toda la página
                     await cargarBases();
                 } else {
                     setStatus('error', '❌ ' + (d.error || 'Error desconocido'));
