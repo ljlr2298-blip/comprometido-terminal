@@ -214,13 +214,13 @@ app.get('/api/partidas/:fecha', async (req, res) => {
 });
 
 // ═══════════════════════════════════════════════════════════
-// 5. ✅ DRILL-DOWN: Nivel 1 — Dependencias (UP+UR)
-// Versión sin RPC: hace la consulta directa y agrupa en Node.js
+// 5. DRILL-DOWN: Nivel 1 — Dependencias (UP+UR)
+//    Versión sin RPC: loop con bloques de 1000
+// ═══════════════════════════════════════════════════════════
 app.get('/api/dependencias/:fecha', async (req, res) => {
     if (!validaFecha(req.params.fecha)) return res.status(400).json({ error: 'Fecha inválida' });
 
     try {
-        // Traer todos los registros en bloques de 1000
         let todosLosDatos = [];
         let offset = 0;
         const batchSize = 1000;
@@ -241,7 +241,6 @@ app.get('/api/dependencias/:fecha', async (req, res) => {
             else { offset += batchSize; }
         }
 
-        // Agrupar en memoria
         const mapa = new Map();
         let totalRegistros = 0;
         let totalOriginal = 0;
@@ -294,9 +293,6 @@ app.get('/api/dependencias/:fecha', async (req, res) => {
     }
 });
 
-    res.json({ dependencias: dependencias || [], totales });
-});
-
 // ═══════════════════════════════════════════════════════════
 // 6. DRILL-DOWN: Nivel 2 — Registros de una dependencia
 // ═══════════════════════════════════════════════════════════
@@ -330,7 +326,6 @@ app.get('/api/base/:fecha', async (req, res) => {
         return q;
     };
 
-    // Traer todos para calcular totales reales
     const { data: todas, error: errT } = await construirQuery().range(0, 100000);
     if (errT) return res.status(500).json({ error: errT.message });
 
@@ -341,7 +336,6 @@ app.get('/api/base/:fecha', async (req, res) => {
         total_saldo: todas.reduce((s, r) => s + (parseFloat(r.saldo_a_pagar) || 0), 0)
     };
 
-    // Filas paginadas para mostrar
     const { data: filas, error } = await construirQuery()
         .order('importe_original', { ascending: false })
         .range(off, off + lim - 1);
@@ -490,7 +484,7 @@ app.get('/api/comparar/nivel3/:f1/:f2', async (req, res) => {
 });
 
 // ═══════════════════════════════════════════════════════════
-// 10. 🚀 ENDPOINT SUBIR BASE
+// 10. ENDPOINT SUBIR BASE (con loteSize = 250 para evitar timeout)
 // ═══════════════════════════════════════════════════════════
 app.post('/api/subir-base', upload.single('file'), async (req, res) => {
     try {
@@ -572,6 +566,7 @@ app.post('/api/subir-base', upload.single('file'), async (req, res) => {
             return res.status(400).json({ error: 'Ninguna fila tenía clave presupuestal válida (mínimo 41 caracteres)' });
         }
 
+        // ✅ Lote de 250 para evitar timeout de Supabase (30s)
         const loteSize = 250;
         for (let i = 0; i < datosParaInsertar.length; i += loteSize) {
             const lote = datosParaInsertar.slice(i, i + loteSize);
